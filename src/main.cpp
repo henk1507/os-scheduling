@@ -77,6 +77,9 @@ int main(int argc, char **argv)
 
     // Main thread work goes here
     int num_lines = 0;
+    uint64_t current;
+    bool terminatorCheck;
+    std::string process_state;
     while (!(shared_data->all_terminated))
     {
         // Clear output from previous iteration
@@ -84,11 +87,24 @@ int main(int argc, char **argv)
 
         // Do the following:
         //   - Get current time
+        current = currentTime();
+
         //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
         //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
         //   - *Check if any running process need to be interrupted (RR time slice expires or newly ready process has higher priority)
         //   - *Sort the ready queue (if needed - based on scheduling algorithm)
         //   - Determine if all processes are in the terminated state
+        terminatorCheck = true;
+        for(i = 0; i < config->num_processes; i++)
+        {
+            process_state = processStateToString(processes[i]->getState());
+            if(process_state != "Terminated")
+            {
+                terminatorCheck = false;
+            }
+        }
+        shared_data->all_terminated = terminatorCheck;
+
         //   - * = accesses shared data (ready queue), so be sure to use proper synchronization
 
         // output process status table
