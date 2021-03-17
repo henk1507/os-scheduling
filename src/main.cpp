@@ -78,8 +78,9 @@ int main(int argc, char **argv)
     // Main thread work goes here
     int num_lines = 0;
     uint64_t current;
+    uint64_t timeChange;
     bool terminatorCheck;
-    std::string process_state;
+    Process::State process_state;
     while (!(shared_data->all_terminated))
     {
         // Clear output from previous iteration
@@ -88,17 +89,65 @@ int main(int argc, char **argv)
         // Do the following:
         //   - Get current time
         current = currentTime();
+        timeChange = current - start;
 
         //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
+        for(i = 0; i < processes.size(); i++)
+        {
+            process_state = processes[i]->getState();
+            if(process_state == Process::State::NotStarted && timeChange >= processes[i]->getStartTime())
+            {
+                processes[i]->setState(Process::State::Ready, current);
+            }
+            shared_data->mutex.lock();
+            shared_data->ready_queue.push_back(processes[i]);
+            shared_data->mutex.unlock();
+        }
+
         //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
+        for(i = 0; i < processes.size(); i++)
+        {
+            process_state = processes[i]->getState();
+            if(process_state == Process::State::IO)
+            {
+                processes[i]->setState(Process::State::Ready, current);
+            }
+            shared_data->mutex.lock();
+            shared_data->ready_queue.push_back(processes[i]);// ONLY WORKS WITH push_back IF WE REMOVE FROM READY QUEUE
+            shared_data->mutex.unlock();
+        }
+
         //   - *Check if any running process need to be interrupted (RR time slice expires or newly ready process has higher priority)
+        for(i = 0; i < processes.size(); i++)
+        {
+            process_state = processes[i]->getState();
+            if(process_state == Process::State::Running && (processes[i]->isInterrupted()))
+            {
+                processes[i]->interrupt();
+                shared_data->mutex.lock();
+                shared_data->ready_queue.remove(processes[i]);
+                shared_data->mutex.unlock();
+            }
+        }
+
         //   - *Sort the ready queue (if needed - based on scheduling algorithm)
+        shared_data->mutex.lock();
+        if(shared_data->algorithm == ScheduleAlgorithm::SJF)
+        {
+            shared_data->ready_queue.sort(SjfComparator());
+        }
+        else if(shared_data->algorithm == ScheduleAlgorithm::PP)
+        {
+            shared_data->ready_queue.sort(PpComparator());
+        }
+        shared_data->mutex.unlock();
+
         //   - Determine if all processes are in the terminated state
         terminatorCheck = true;
-        for(i = 0; i < config->num_processes; i++)
+        for(i = 0; i < processes.size(); i++)
         {
-            process_state = processStateToString(processes[i]->getState());
-            if(process_state != "Terminated")
+            process_state = processes[i]->getState();
+            if(process_state != Process::State::Terminated)
             {
                 terminatorCheck = false;
             }
