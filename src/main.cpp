@@ -193,16 +193,42 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 {
     // Work to be done by each core idependent of the other cores
     // Repeat until all processes in terminated state:
+    while(!shared_data->all_terminated)
+    {
     //   - *Get process at front of ready queue
+        shared_data->mutex.lock();
+        Process *processToRun = shared_data->ready_queue.front();
+        shared_data->ready_queue.pop_front();
+        shared_data->mutex.unlock();
+
     //   - Simulate the processes running until one of the following:
     //     - CPU burst time has elapsed
     //     - Interrupted (RR time slice has elapsed or process preempted by higher priority process)
+        while(/*something*/false);
+
     //  - Place the process back in the appropriate queue
     //     - I/O queue if CPU burst finished (and process not finished) -- no actual queue, simply set state to IO
     //     - Terminated if CPU burst finished and no more bursts remain -- no actual queue, simply set state to Terminated
     //     - *Ready queue if interrupted (be sure to modify the CPU burst time to now reflect the remaining time)
+        if(processToRun->getCpuTime() == /*something*/0 && processToRun->getRemainingTime() > 0)
+        {
+            processToRun->setState(Process::State::IO, currentTime());
+        }
+        else if(processToRun->getCpuTime() == /*something*/0 && processToRun->getRemainingTime() == 0)
+        {
+            processToRun->setState(Process::State::Terminated, currentTime());
+        }
+        else if(processToRun->isInterrupted())
+        {
+            shared_data->mutex.lock();
+            shared_data->ready_queue.push_back(processToRun);
+            processToRun->setState(Process::State::Ready, currentTime());
+            shared_data->mutex.unlock();
+        }
+
     //  - Wait context switching time
     //  - * = accesses shared data (ready queue), so be sure to use proper synchronization
+    }
 }
 
 int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex)
