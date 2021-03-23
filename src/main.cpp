@@ -1,3 +1,6 @@
+// make
+// ./bin/osscheduler resrc/config_01.txt
+
 #include <iostream>
 #include <string>
 #include <list>
