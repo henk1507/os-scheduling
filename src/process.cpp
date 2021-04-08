@@ -29,6 +29,7 @@ Process::Process(ProcessDetails details, uint64_t current_time)
     {
         remain_time += burst_times[i];
     }
+    last_time = 0;
 }
 
 Process::~Process()
@@ -54,6 +55,11 @@ uint8_t Process::getPriority() const
 uint64_t Process::getBurstStartTime() const
 {
     return burst_start_time;
+}
+
+uint64_t Process::getBurstTime() const
+{
+    return burst_times[current_burst];
 }
 
 Process::State Process::getState() const
@@ -101,7 +107,9 @@ void Process::setState(State new_state, uint64_t current_time)
     if (state == State::NotStarted && new_state == State::Ready)
     {
         launch_time = current_time;
+        last_time = current_time;
     }
+    updateProcess(current_time);
     state = new_state;
 }
 
@@ -124,6 +132,28 @@ void Process::updateProcess(uint64_t current_time)
 {
     // use `current_time` to update turnaround time, wait time, burst times, 
     // cpu time, and remaining time
+    if(state == State::Terminated && turn_time == 0)
+    {
+        turn_time = current_time - launch_time;
+    }
+    else if(state == State::Running)
+    {
+        cpu_time += current_time - last_time;
+        remain_time -= burst_times[current_burst];
+    }
+    else
+    {
+        wait_time += current_time - last_time;
+    }
+
+    if(is_interrupted)
+    {
+        updateBurstTime(current_burst, current_time - last_time);
+        remain_time += burst_times[current_burst];
+        interruptHandled();
+    }
+
+    last_time = current_time;
 }
 
 void Process::updateBurstTime(int burst_idx, uint32_t new_time)
@@ -139,12 +169,12 @@ void Process::updateBurstTime(int burst_idx, uint32_t new_time)
 bool SjfComparator::operator ()(const Process *p1, const Process *p2)
 {
     bool result = (p1->getCpuTime() < p2->getCpuTime());
-    return result; // change this!
+    return result;
 }
 
 // PP - comparator for sorting read queue based on priority
 bool PpComparator::operator ()(const Process *p1, const Process *p2)
 {
     bool result = (p1->getPriority() < p2->getPriority());
-    return result; // change this!
+    return result;
 }

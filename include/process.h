@@ -24,6 +24,7 @@ private:
     int32_t cpu_time;           // total time spent running on a CPU core
     int32_t remain_time;        // CPU time remaining until terminated
     uint64_t launch_time;       // actual time in ms (since epoch) that process was 'launched'
+    uint64_t last_time;         // most recent time something happened
     // you are welcome to add other private data fields here if you so choose
 
 public:
@@ -34,6 +35,7 @@ public:
     uint32_t getStartTime() const;
     uint8_t getPriority() const;
     uint64_t getBurstStartTime() const;
+    uint64_t getBurstTime() const;
     State getState() const;
     bool isInterrupted() const;
     int8_t getCpuCore() const;
