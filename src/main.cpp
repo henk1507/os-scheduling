@@ -212,22 +212,45 @@ int main(int argc, char **argv)
     float CPU_time = 0;
     float total_wait = 0;
     float CPU_util = 0;
+    std::list<float> throughlist;
+    int halfway = processes.size()/2;
+    float first_half = 0;
+    float second_half = 0;
 
     for(i = 0; i < processes.size(); i++)
     {
         total_time += processes[i]->getTurnaroundTime();
         CPU_time += processes[i]->getCpuTime();
         total_wait += processes[i]->getWaitTime();
+        throughlist.push_back(processes[i]->getTurnaroundTime());
     }
 
     CPU_util = CPU_time / currentTime() - start;
+
+    throughlist.sort();
+
+    for(i = 0; i < processes.size(); i++)
+    {
+        if(i < halfway)
+        {
+            first_half += throughlist.front();
+        }
+        else
+        {
+            second_half += throughlist.front();
+        }
+
+        throughlist.pop_front();
+    }
 
     //  - CPU utilization
     printf("CPU Utilization: %5.1f\n", CPU_util*100);
 
     //  - Throughput
     //     - Average for first 50% of processes finished
+    printf("Average Throughput for first half: 1 process per %5.1f miliseconds\n", first_half/halfway);
     //     - Average for second 50% of processes finished
+    printf("Average Throughput for second half: 1 process per %5.1f miliseconds\n", second_half/(processes.size()-halfway));
     //     - Overall average
     printf("Average Throughput: 1 process per %5.1f miliseconds\n", total_time/processes.size());
 
